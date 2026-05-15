@@ -16,7 +16,7 @@ def sanitizer(input, stopwords) -> list[str]:
     # First, make a punctuation translate table with maketrans()
     punct_dict = {}
     for char in string.punctuation:
-        punct_dict[char] = ' '
+        punct_dict[char] = ''
         
     # Then, use that dictionary to create a translation table (to remove punctuation)
     punct_table = str.maketrans(punct_dict)

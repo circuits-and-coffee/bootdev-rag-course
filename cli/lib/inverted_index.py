@@ -2,22 +2,12 @@ from collections import defaultdict
 import json
 from pathlib import Path
 import pickle
+from collections import Counter
 
 from lib.sanitizer import sanitizer
 
 class InvertedIndex:
     def __init__(self):
-        self.index = defaultdict(set) # dictionary mapping tokens (strings) to sets of document IDs (integers)
-        self.docmap: dict[int, dict] = {} # dictionary mapping document IDs to their full document objects
-        
-        with open('data/stopwords.txt', 'r') as file:
-            stopwords = file.read().splitlines()
-
-        self.stopwords = stopwords
-        
-        with open('data/movies.json', 'r') as file:
-            dataset = json.load(file)
-        self.movies = dataset['movies']
         
         """
         Example of index:
@@ -27,7 +17,7 @@ class InvertedIndex:
             'reality': {1, 3, 7}
         }
         
-        Example of docmap (Or is it just the ID of the item?)
+        Example of docmap
         {
             4150: {
                 "id": 4150,
@@ -47,15 +37,32 @@ class InvertedIndex:
         }
         """
         
+        self.index = defaultdict(set) # dictionary mapping tokens (strings) to sets of document IDs (integers)
+        self.docmap: dict[int, dict] = {} # dictionary mapping document IDs to their full document objects
+        
+        with open('data/stopwords.txt', 'r') as file:
+            stopwords = file.read().splitlines()
+        self.stopwords = stopwords
+        
+        with open('data/movies.json', 'r') as file:
+            dataset = json.load(file)
+        self.movies = dataset['movies']
+        
+        self.term_frequencies: dict[int, Counter] = {} 
+        
         
     def __add_document(self, doc_id: int, text: str) -> None:
         """Tokenize the input text, then add each token to the index with the document ID.
-        
         """
         
         tokenized_words = sanitizer(text, self.stopwords)
-        for token in set(tokenized_words):
+        self.term_frequencies[doc_id] = Counter()
+        for token in tokenized_words:
             self.index[token].add(doc_id)
+            # For each token, increment its count in the Counter for that document ID
+            token_counter = self.term_frequencies[doc_id] 
+            token_counter.update([token])
+            self.term_frequencies[doc_id] = token_counter
 
     
     def get_documents(self, term) -> list[int]:
@@ -69,23 +76,27 @@ class InvertedIndex:
         # Start by getting the set of document IDs for a given token
         doc_ids = self.index.get(term, set())
         return sorted(list(doc_ids))
+    
+    def get_tf(self, doc_id, term):
+        # Returns the times the token appears in the document with the given ID.
+        # If the term doesn't exist in that document, return 0
+        try:
+            return self.term_frequencies[doc_id][term]
+        except Exception as e:
+            print(f"Error counting term: {e}")
+            return 0
 
     
     def build(self):
-        
+        # Build our cache folder
         for movie in self.movies:
-            # print(f"Currently adding {movie['title']}")
-            # Add to the index
-            
+            # Add to the index            
             movie_string = f"{movie['title']} {movie['description']}"
-            # movie_string = f"{movie['title']}"
             
             # And add to the docmap
             doc_id = movie["id"]
             self.docmap[doc_id] = movie
             self.__add_document(doc_id, movie_string)
-
-            # self.docmap[movie['id']] = movie
             
         
     def save(self):
@@ -96,6 +107,8 @@ class InvertedIndex:
             pickle.dump(self.index, f_index)
         with open('cache/docmap.pkl', 'wb') as f_docmap:
             pickle.dump(self.docmap, f_docmap)
+        with open('cache/term_frequencies.pkl', 'wb') as f_termfreq:
+            pickle.dump(self.term_frequencies, f_termfreq)
 
     def load(self):
         # Load the pickle dumps from cache
@@ -109,5 +122,11 @@ class InvertedIndex:
         with open('cache/docmap.pkl', 'rb') as f_docmap:
             try:
                 self.docmap = pickle.load(f_docmap)
+            except FileNotFoundError:
+                print("Error: The specified file was not found.")
+                
+        with open('cache/term_frequencies.pkl', 'rb') as f_termfreq:
+            try:
+                self.term_frequencies = pickle.load(f_termfreq)
             except FileNotFoundError:
                 print("Error: The specified file was not found.")
