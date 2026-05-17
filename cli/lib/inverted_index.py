@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import pickle
 from collections import Counter
+import math
 
 from lib.sanitizer import sanitizer
 
@@ -85,7 +86,29 @@ class InvertedIndex:
         except Exception as e:
             print(f"Error counting term: {e}")
             return 0
+        
+    def get_idf(self, term):
+        # Returns the inverse document frequency.
+        
+        total_doc_count = len(self.docmap)
+        sanitized_term = sanitizer(term, self.stopwords)
+        term_match_doc_count = len(self.index[sanitized_term[0]])
+        
+        # Calculate the IDF
+        idf = math.log((total_doc_count + 1) / (term_match_doc_count + 1))
+        return idf
 
+    def get_bm25_idf(self, term: str) -> float:
+        # Calculates a more stable IDF value via the Okapi BM25 algorithm
+        tokenized_term_array = sanitizer(term, self.stopwords)
+        if len(tokenized_term_array) != 1:
+            raise Exception
+        tokenized_term = tokenized_term_array[0]
+        
+        df = len(self.get_documents(tokenized_term))
+        N = len(self.docmap)
+        IDF = math.log((N - df + 0.5) / (df + 0.5) + 1)
+        return IDF
     
     def build(self):
         # Build our cache folder
@@ -103,12 +126,16 @@ class InvertedIndex:
         # Create cache directory if it doesn't exist
         cache_path = Path('cache/')
         cache_path.mkdir(exist_ok=True)
-        with open('cache/index.pkl', 'wb') as f_index:
-            pickle.dump(self.index, f_index)
-        with open('cache/docmap.pkl', 'wb') as f_docmap:
-            pickle.dump(self.docmap, f_docmap)
-        with open('cache/term_frequencies.pkl', 'wb') as f_termfreq:
-            pickle.dump(self.term_frequencies, f_termfreq)
+        try:
+            with open('cache/index.pkl', 'wb') as f_index:
+                pickle.dump(self.index, f_index)
+            with open('cache/docmap.pkl', 'wb') as f_docmap:
+                pickle.dump(self.docmap, f_docmap)
+            with open('cache/term_frequencies.pkl', 'wb') as f_termfreq:
+                pickle.dump(self.term_frequencies, f_termfreq)
+            return 0
+        except Exception as e:
+            return e
 
     def load(self):
         # Load the pickle dumps from cache

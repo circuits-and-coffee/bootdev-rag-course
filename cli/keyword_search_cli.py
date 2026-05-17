@@ -3,30 +3,41 @@ import json
 import math
 
 from lib.inverted_index import InvertedIndex
+from lib.utils import bm25_idf_command
 from lib.sanitizer import sanitizer
 
 def main() -> None:
+    
+    # Generic CLI Parser & subparser
     parser = argparse.ArgumentParser(description="Keyword Search CLI")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
+    # Search Parser
     search_parser = subparsers.add_parser("search", help="Search movies using BM25")
     search_parser.add_argument("query", type=str, help="Search query")
     
+    # Build Parser
     build_parser = subparsers.add_parser("build", help="Build database")
     
+    # TF Parser
     tf_parser = subparsers.add_parser("tf", help="Gets term frequency")
     tf_parser.add_argument("doc_id", type=int, help="Document ID")
     tf_parser.add_argument("term", type=str, help="Term to get frequency of")
     
+    # IDF Parser
     idf_parser = subparsers.add_parser("idf", help="Calculate Inverse Document Frequency")
     idf_parser.add_argument("term", type=str, help="Term to get inverse document frequency of")
+    
+    # TFIDF Parser
+    tfidf_parser = subparsers.add_parser("tfidf", help="Calculate `Term & Inverse Document` Frequency")
+    tfidf_parser.add_argument("doc_id", type=int, help="Document ID")
+    tfidf_parser.add_argument("term", type=str, help="Term to get inverse document frequency of")
+    
+    # BM25 Parser
+    bm25_parser = subparsers.add_parser("bm25idf", help="Calculate `Okapi BM25` IDF")
+    bm25_parser.add_argument("term", type=str, help="Term to get inverse document frequency of")
 
     args = parser.parse_args()
-    
-    # Load our dataset
-    results = []
-    with open('data/movies.json', 'r') as file:
-        dataset = json.load(file)
     
     with open('data/stopwords.txt', 'r') as file:
         stopwords = file.read().splitlines()
@@ -38,29 +49,47 @@ def main() -> None:
             db.build()
             
             # Save to list
-            db.save()
+            save_status = db.save()
             
-            # TODO: Add logger statements on success?
+            if (save_status):
+                print(f"There was an error with saving - {save_status}")
+            else:
+                print(f"Inverted index built successfully")
+                
             
         case "tf":
-            # It should take a document ID and a term as arguments.
-            # It should print the term frequency for that term in the document with the given ID.
+            # Finds term frequency for a given term in the specified document.
             # If the term doesn't exist in that document, it should print "0".
+            
+            # TODO: Move the logic of this case to utils.py?
+            
             print(f"Counting {args.term} across document #{args.doc_id}")
-            db = InvertedIndex()
-            try:
-                db.load()
-            except Exception as e:
-                print(f"Exception encountered: {e}")
-                return
+            db = load_dataset()
             try:
                 term_count = db.get_tf(args.doc_id, args.term)
             except Exception as e:
                 print(f"Exception encountered: {e}")
                 return
             print(f"The term `{args.term}` appeared {term_count} time(s) in document #{args.doc_id}")
-
         
+        case "idf":
+            # Calculate the IDF for a given term
+            
+            db = load_dataset()
+            
+            try:
+                idf = db.get_idf(args.term)
+            except Exception as e:
+                print(f"Exception encountered: {e}")
+                return
+            print(f"Inverse document frequency of '{args.term}': {idf:.2f}") 
+            return
+                
+        case "bm25idf":
+            # Calculate BM25 Inverse Document frequency
+            bm25idf = bm25_idf_command(args.term)
+            print(f"BM25 IDF score of '{args.term}': {bm25idf:.2f}")
+
         case "search":
             # Perform the search
             print(f"Searching for: {args.query}")
@@ -69,12 +98,7 @@ def main() -> None:
             movie_counter = 0
             
             # We're now going to use our InvertedIndex data set via load()
-            db = InvertedIndex()
-            try:
-                db.load()
-            except Exception as e:
-                print(f"Exception encountered: {e}")
-                return
+            db = load_dataset()
             
             sanitized_search_arg_tokens = sanitizer(args.query, stopwords)
             results = []
@@ -92,28 +116,39 @@ def main() -> None:
                 if movie_counter == 5:
                     break 
                 
-        case "idf":
-            # Calculate the IDF for a given term
-            
-            db = InvertedIndex()
+        case "tfidf":
+            # TODO: Move the logic of this case to utils.py
+            # It should take a document ID and a term as arguments.
+            # It should print the term frequency for that term in the document with the given ID.
+            # If the term doesn't exist in that document, it should print "0".
+            print(f"Counting {args.term} across document #{args.doc_id}")
+            db = load_dataset()
             try:
-                db.load()
+                # Calculate TF
+                tf = db.get_tf(args.doc_id, args.term)                
+                # Calculate IDF
+                idf = db.get_idf(args.term)
+                # Calculate TFIDF
+                tf_idf = tf * idf
+                print(f"TF-IDF score of '{args.term}' in document '{args.doc_id}': {tf_idf:.2f}")
+
             except Exception as e:
                 print(f"Exception encountered: {e}")
-                return
-            
-            total_doc_count = len(db.docmap)
-            sanitized_term = sanitizer(args.term, stopwords)
-            term_match_doc_count = len(db.index[sanitized_term[0]])
-            
-            # Calculate the IDF
-            idf = math.log((total_doc_count + 1) / (term_match_doc_count + 1))
-
-            print(f"Inverse document frequency of '{args.term}': {idf:.2f}")
-
+                
         
         case _:
             parser.print_help()
+            
+
+def load_dataset():
+    # Returns dataset
+    db = InvertedIndex()
+    try:
+        db.load()
+        return db
+    except Exception as e:
+        print(f"Exception encountered: {e}")
+        return 
 
 
 if __name__ == "__main__":
