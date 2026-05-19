@@ -6,6 +6,7 @@ from collections import Counter
 import math
 
 from lib.sanitizer import sanitizer
+from constants import BM25_K1
 
 class InvertedIndex:
     def __init__(self):
@@ -109,6 +110,11 @@ class InvertedIndex:
         N = len(self.docmap)
         IDF = math.log((N - df + 0.5) / (df + 0.5) + 1)
         return IDF
+    
+    def get_bm25_tf(self, doc_id, term, k1=BM25_K1):
+        raw_term_frequency = self.get_tf(doc_id, term)
+        saturated_tf = (raw_term_frequency * (k1 + 1)) / (raw_term_frequency + k1)
+        return saturated_tf
     
     def build(self):
         # Build our cache folder

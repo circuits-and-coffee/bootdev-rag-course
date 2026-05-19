@@ -3,8 +3,10 @@ import json
 import math
 
 from lib.inverted_index import InvertedIndex
-from lib.utils import bm25_idf_command, search_for_args
+from lib.utils import bm25_idf_command, search_for_args, bm25_tf_command
 from lib.sanitizer import sanitizer
+
+from constants import BM25_K1
 
 def main() -> None:
     
@@ -36,6 +38,13 @@ def main() -> None:
     # BM25 Parser
     bm25_parser = subparsers.add_parser("bm25idf", help="Calculate `Okapi BM25` IDF")
     bm25_parser.add_argument("term", type=str, help="Term to get inverse document frequency of")
+    
+    bm25_tf_parser = subparsers.add_parser(
+        "bm25tf", help="Get BM25 TF score for a given document ID and term"
+    )
+    bm25_tf_parser.add_argument("doc_id", type=int, help="Document ID")
+    bm25_tf_parser.add_argument("term", type=str, help="Term to get BM25 TF score for")
+    bm25_tf_parser.add_argument("k1", type=float, nargs='?', default=BM25_K1, help="Tunable BM25 K1 parameter")
 
     args = parser.parse_args()
     
@@ -105,6 +114,11 @@ def main() -> None:
 
             except Exception as e:
                 print(f"Exception encountered: {e}")
+                
+        case "bm25tf":
+            # Calculate BM25 Inverse Document frequency
+            bm25tf = bm25_tf_command(args.doc_id, args.term, args.k1)
+            print(f"BM25 TF score of '{args.term}' in document '{args.doc_id}': {bm25tf:.2f}")
                 
         case "search":
             # Perform the search

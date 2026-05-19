@@ -1,13 +1,6 @@
 from lib.inverted_index import InvertedIndex
 from lib.sanitizer import sanitizer
-
-def bm25_idf_command(term: str) -> float:
-    # Allows us to test the `get_bm25_idf` method
-    
-    db = InvertedIndex()
-    db.load()
-    bm25idf = db.get_bm25_idf(term)
-    return bm25idf
+from constants import BM25_K1
 
 def load_stopwords() -> list:
     # Loads stopwords
@@ -28,3 +21,18 @@ def search_for_args(query):
         except Exception as e:
             print(f"Unable to find")
     return results
+
+def bm25_idf_command(term: str) -> float:
+    # Allows us to test the `get_bm25_idf` method
+    db = InvertedIndex()
+    db.load()
+    bm25idf = db.get_bm25_idf(term)
+    return bm25idf
+
+def bm25_tf_command(doc_id: int, term: str, k1=BM25_K1):
+    db = InvertedIndex()
+    db.load()
+    stopwords = load_stopwords()
+    sanitized_term = sanitizer(term, stopwords)
+    bm25tf = db.get_bm25_tf(doc_id, sanitized_term[0], k1)
+    return bm25tf
