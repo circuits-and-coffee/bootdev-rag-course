@@ -1,6 +1,6 @@
 from lib.inverted_index import InvertedIndex
 from lib.sanitizer import sanitizer
-from constants import BM25_K1
+from constants import BM25_K1, BM25_B
 
 def load_stopwords() -> list:
     # Loads stopwords
@@ -29,10 +29,10 @@ def bm25_idf_command(term: str) -> float:
     bm25idf = db.get_bm25_idf(term)
     return bm25idf
 
-def bm25_tf_command(doc_id: int, term: str, k1=BM25_K1):
+def bm25_tf_command(doc_id: int, term: str, k1=BM25_K1, b=BM25_B):
     db = InvertedIndex()
     db.load()
     stopwords = load_stopwords()
     sanitized_term = sanitizer(term, stopwords)
-    bm25tf = db.get_bm25_tf(doc_id, sanitized_term[0], k1)
+    bm25tf = db.get_bm25_tf(doc_id, sanitized_term[0], k1, b)
     return bm25tf

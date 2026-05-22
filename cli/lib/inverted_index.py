@@ -4,9 +4,10 @@ from pathlib import Path
 import pickle
 from collections import Counter
 import math
+import os
 
 from lib.sanitizer import sanitizer
-from constants import BM25_K1
+from constants import BM25_K1, BM25_B, CACHE_DIR
 
 class InvertedIndex:
     def __init__(self):
@@ -51,6 +52,9 @@ class InvertedIndex:
         self.movies = dataset['movies']
         
         self.term_frequencies: dict[int, Counter] = {} 
+        self.doc_lengths = defaultdict()
+        self.doc_lengths_path = os.path.join(CACHE_DIR, "doc_lengths.pkl")
+        
         
         
     def __add_document(self, doc_id: int, text: str) -> None:
@@ -59,12 +63,25 @@ class InvertedIndex:
         
         tokenized_words = sanitizer(text, self.stopwords)
         self.term_frequencies[doc_id] = Counter()
+
+        # Count total number of terms per document
+        self.doc_lengths[doc_id] = len(tokenized_words)
+
+        # Log count of tokenized words
         for token in tokenized_words:
             self.index[token].add(doc_id)
             # For each token, increment its count in the Counter for that document ID
             token_counter = self.term_frequencies[doc_id] 
             token_counter.update([token])
             self.term_frequencies[doc_id] = token_counter
+            
+    def __get_avg_doc_length(self) -> float:
+        sum_words = 0
+        if len(self.docmap) == 0:
+            return 0.0
+        for i in self.doc_lengths:
+            sum_words += self.doc_lengths[i]
+        return sum_words / len(self.docmap)
 
     
     def get_documents(self, term) -> list[int]:
@@ -111,10 +128,13 @@ class InvertedIndex:
         IDF = math.log((N - df + 0.5) / (df + 0.5) + 1)
         return IDF
     
-    def get_bm25_tf(self, doc_id, term, k1=BM25_K1):
+    def get_bm25_tf(self, doc_id, term, k1=BM25_K1, b=BM25_B):
         raw_term_frequency = self.get_tf(doc_id, term)
-        saturated_tf = (raw_term_frequency * (k1 + 1)) / (raw_term_frequency + k1)
-        return saturated_tf
+        length_norm = 1 - b + b * (self.doc_lengths[doc_id] / self.__get_avg_doc_length())
+        # saturated_tf = (raw_term_frequency * (k1 + 1)) / (raw_term_frequency + k1)
+        base_tf = self.get_tf(doc_id, term)
+        tf_component = (base_tf * (k1 + 1)) / (base_tf + k1 * length_norm)
+        return tf_component
     
     def build(self):
         # Build our cache folder
@@ -139,6 +159,8 @@ class InvertedIndex:
                 pickle.dump(self.docmap, f_docmap)
             with open('cache/term_frequencies.pkl', 'wb') as f_termfreq:
                 pickle.dump(self.term_frequencies, f_termfreq)
+            with open('cache/doc_lengths.pkl', 'wb') as f_doclengths:
+                pickle.dump(self.doc_lengths, f_doclengths)
             return 0
         except Exception as e:
             return e
@@ -151,12 +173,16 @@ class InvertedIndex:
                 self.index = pickle.load(f_index)
             except FileNotFoundError:
                 print("Error: The specified file was not found.")
+            except Exception as e:
+                print("Error opening index.pkl: {e}")
         
         with open('cache/docmap.pkl', 'rb') as f_docmap:
             try:
                 self.docmap = pickle.load(f_docmap)
             except FileNotFoundError:
                 print("Error: The specified file was not found.")
+            except Exception as e:
+                print("Error opening docmap.pkl: {e}")
                 
         with open('cache/term_frequencies.pkl', 'rb') as f_termfreq:
             try:
@@ -164,4 +190,12 @@ class InvertedIndex:
             except FileNotFoundError:
                 print("Error: The specified file was not found.")
             except Exception as e:
-                print("Error: {e}")
+                print("Error opening term_frequencies.pkl: {e}")
+                
+        with open('cache/doc_lengths.pkl', 'rb') as f_doclengths:
+            try:
+                self.doc_lengths = pickle.load(f_doclengths)
+            except FileNotFoundError:
+                print("Error: The specified file was not found.")
+            except Exception as e:
+                print("Error opening doc_lengths.pkl: {e}")
