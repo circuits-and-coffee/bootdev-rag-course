@@ -1,10 +1,7 @@
 import argparse
-import json
-import math
 
 from lib.inverted_index import InvertedIndex
 from lib.utils import bm25_idf_command, search_for_args, bm25_tf_command
-from lib.sanitizer import sanitizer
 
 from constants import BM25_K1, BM25_B
 
@@ -15,38 +12,51 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # Search Parser
-    search_parser = subparsers.add_parser("search", help="Search movies using BM25")
+    search_parser = subparsers.add_parser(
+        "search", help="Search movies using BM25"
+    )
     search_parser.add_argument("query", type=str, help="Search query")
     
     # Build Parser
-    build_parser = subparsers.add_parser("build", help="Build database")
+    build_parser = subparsers.add_parser(
+        "build", help="Build database"
+    )
     
     # TF Parser
-    tf_parser = subparsers.add_parser("tf", help="Gets term frequency")
+    tf_parser = subparsers.add_parser(
+        "tf", help="Gets term frequency"
+    )
     tf_parser.add_argument("doc_id", type=int, help="Document ID")
     tf_parser.add_argument("term", type=str, help="Term to get frequency of")
     
     # IDF Parser
-    idf_parser = subparsers.add_parser("idf", help="Calculate Inverse Document Frequency")
+    idf_parser = subparsers.add_parser(
+        "idf", help="Calculate Inverse Document Frequency"
+    )
     idf_parser.add_argument("term", type=str, help="Term to get inverse document frequency of")
     
     # TFIDF Parser
-    tfidf_parser = subparsers.add_parser("tfidf", help="Calculate `Term & Inverse Document` Frequency")
+    tfidf_parser = subparsers.add_parser(
+        "tfidf", help="Calculate `Term & Inverse Document` Frequency"
+    )
     tfidf_parser.add_argument("doc_id", type=int, help="Document ID")
     tfidf_parser.add_argument("term", type=str, help="Term to get inverse document frequency of")
     
     # BM25 Parser
-    bm25_parser = subparsers.add_parser("bm25idf", help="Calculate `Okapi BM25` IDF")
+    bm25_parser = subparsers.add_parser(
+        "bm25idf", help="Calculate `Okapi BM25` IDF"
+    )
     bm25_parser.add_argument("term", type=str, help="Term to get inverse document frequency of")
     
+    # BM25_TF Parser
     bm25_tf_parser = subparsers.add_parser(
         "bm25tf", help="Get BM25 TF score for a given document ID and term"
     )
+    
     bm25_tf_parser.add_argument("doc_id", type=int, help="Document ID")
     bm25_tf_parser.add_argument("term", type=str, help="Term to get BM25 TF score for")
     bm25_tf_parser.add_argument("k1", type=float, nargs='?', default=BM25_K1, help="Tunable BM25 K1 parameter")
     bm25_tf_parser.add_argument("b", type=float, nargs='?', default=BM25_B, help="Tunable BM25 b parameter")
-
 
     args = parser.parse_args()
     
@@ -99,7 +109,6 @@ def main() -> None:
             print(f"BM25 IDF score of '{args.term}': {bm25idf:.2f}")
                 
         case "tfidf":
-            # TODO: Move the logic of this case to utils.py?
             # It should take a document ID and a term as arguments.
             # It should print the term frequency for that term in the document with the given ID.
             # If the term doesn't exist in that document, it should print "0".

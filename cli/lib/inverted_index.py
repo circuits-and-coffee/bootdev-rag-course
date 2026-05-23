@@ -150,16 +150,16 @@ class InvertedIndex:
         
     def save(self):
         # Create cache directory if it doesn't exist
-        cache_path = Path('cache/')
+        cache_path = Path(CACHE_DIR)
         cache_path.mkdir(exist_ok=True)
         try:
-            with open('cache/index.pkl', 'wb') as f_index:
+            with open(os.path.join(CACHE_DIR, 'index.pkl'), 'wb') as f_index:
                 pickle.dump(self.index, f_index)
-            with open('cache/docmap.pkl', 'wb') as f_docmap:
+            with open(os.path.join(CACHE_DIR, 'docmap.pkl'), 'wb') as f_docmap:
                 pickle.dump(self.docmap, f_docmap)
-            with open('cache/term_frequencies.pkl', 'wb') as f_termfreq:
+            with open(os.path.join(CACHE_DIR, 'term_frequencies.pkl'), 'wb') as f_termfreq:
                 pickle.dump(self.term_frequencies, f_termfreq)
-            with open('cache/doc_lengths.pkl', 'wb') as f_doclengths:
+            with open(os.path.join(CACHE_DIR, 'doc_lengths.pkl'), 'wb') as f_doclengths:
                 pickle.dump(self.doc_lengths, f_doclengths)
             return 0
         except Exception as e:
@@ -168,7 +168,7 @@ class InvertedIndex:
     def load(self):
         # Load the pickle dumps from cache
         
-        with open('cache/index.pkl', 'rb') as f_index:
+        with open(os.path.join(CACHE_DIR,'index.pkl'), 'rb') as f_index:
             try:
                 self.index = pickle.load(f_index)
             except FileNotFoundError:
@@ -176,7 +176,7 @@ class InvertedIndex:
             except Exception as e:
                 print("Error opening index.pkl: {e}")
         
-        with open('cache/docmap.pkl', 'rb') as f_docmap:
+        with open(os.path.join(CACHE_DIR, 'docmap.pkl'), 'rb') as f_docmap:
             try:
                 self.docmap = pickle.load(f_docmap)
             except FileNotFoundError:
@@ -184,7 +184,7 @@ class InvertedIndex:
             except Exception as e:
                 print("Error opening docmap.pkl: {e}")
                 
-        with open('cache/term_frequencies.pkl', 'rb') as f_termfreq:
+        with open(os.path.join(CACHE_DIR, 'term_frequencies.pkl'), 'rb') as f_termfreq:
             try:
                 self.term_frequencies = pickle.load(f_termfreq)
             except FileNotFoundError:
@@ -192,7 +192,7 @@ class InvertedIndex:
             except Exception as e:
                 print("Error opening term_frequencies.pkl: {e}")
                 
-        with open('cache/doc_lengths.pkl', 'rb') as f_doclengths:
+        with open(os.path.join(CACHE_DIR, 'doc_lengths.pkl'), 'rb') as f_doclengths:
             try:
                 self.doc_lengths = pickle.load(f_doclengths)
             except FileNotFoundError:
